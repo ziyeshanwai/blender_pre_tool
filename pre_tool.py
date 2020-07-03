@@ -16,9 +16,9 @@ import bpy
 import os
 import pickle
 import bmesh
+import mathutils
 import bgl
 import blf
-from bpy_extras.view3d_utils import location_3d_to_region_2d as loc3d2d
 
 def save_pickle_file(filename, file):
     with open(filename, 'wb') as f:
@@ -26,6 +26,93 @@ def save_pickle_file(filename, file):
         print("save {}".format(filename))
 
 tracked_points_index = []
+
+def draw_callback_px(self, context):
+    # polling
+    if context.mode != "EDIT_MESH":
+        return
+    global tracked_points_index
+    # get screen information
+    region = context.region
+    mid_x = region.width / 2
+    mid_y = region.height / 2
+    width = region.width
+    height = region.height
+    
+    # get matrices
+    view_mat = context.space_data.region_3d.perspective_matrix
+    ob_mat = context.active_object.matrix_world
+    total_mat = view_mat @ ob_mat
+        
+    blf.size(0, 20, 72) # change font size
+    
+    def draw_index(r, g, b, index, center):
+        
+        vec = total_mat @ center # order is important
+        # dehomogenise
+        vec = mathutils.Vector((vec[0] / vec[3], vec[1] / vec[3], vec[2] / vec[3]))
+        x = int(mid_x + vec[0] * width / 2)
+        y = int(mid_y + vec[1] * height / 2)
+        #bgl.glColor()
+        bgl.glColorMask(int(r), int(g), int(b), 0)
+        blf.position(0, x, y, 0)
+        blf.draw(0, str(index))
+    scene = context.scene
+    me = context.active_object.data
+    bm = bmesh.from_edit_mesh(me)
+    if scene.live_mode:
+        me.update()
+     
+    if scene.display_vert_index:
+        for i, index in enumerate(tracked_points_index):
+            draw_index(1, 1, 1, i, bm.verts[index].co.to_4d())
+        
+
+
+# operator
+class IndexVisualiser(bpy.types.Operator):
+    bl_idname = "view3d.index_visualiser"
+    bl_label = "Index Visualiser"
+    bl_description = "Toggle the visualisation of indices"
+    
+    _handle = None
+   
+    
+    @classmethod
+    def poll(cls, context):
+        return context.mode=="EDIT_MESH"
+    
+    def modal(self, context, event):
+        if context.area:
+            context.area.tag_redraw()
+
+        # removal of callbacks when operator is called again
+        if context.scene.display_indices == -1:
+            bpy.types.SpaceView3D.draw_handler_remove(self._handle, 'WINDOW')
+            context.scene.display_indices = 0
+            return {"CANCELLED"}
+        
+        return {"PASS_THROUGH"}
+    
+    def invoke(self, context, event):
+        print("start invoke....")
+        if context.area.type == "VIEW_3D":
+            print("context.scene.display_indices is {}".format(context.scene.display_indices))
+            if context.scene.display_indices < 1:
+                # operator is called for the first time, start everything
+                context.scene.display_indices = 1
+                self._handle = bpy.types.SpaceView3D.draw_handler_add(draw_callback_px,
+                    (self, context), 'WINDOW', 'POST_PIXEL')
+                context.window_manager.modal_handler_add(self)
+                print("add draw_callback_px")
+                return {"RUNNING_MODAL"}
+            else:
+                # operator is called again, stop displaying
+                context.scene.display_indices = -1
+                return {'RUNNING_MODAL'}
+        else:
+            self.report({"WARNING"}, "View3D not found, can't run operator")
+            return {"CANCELLED"}
 
 class WM_OT_AddTrackedPoints(bpy.types.Operator):
     """add tracked points"""
@@ -213,6 +300,15 @@ class MainPanel(bpy.types.Panel):
         row.operator("wm.pop_selected_points", icon= 'SPHERE', text= "Pop Selected Points")
         row = layout.row()
         row.operator("wm.reset_tracked_points", icon= 'SPHERE', text= "Reset Tracked Points")
+        self.layout.separator()
+        col = self.layout.column(align=True)
+        col.operator("view3d.index_visualiser", text="Visualize indices")
+        row = col.row(align=True)
+        row.active = (context.mode=="EDIT_MESH" and context.scene.display_indices==1)
+        row.prop(context.scene, "display_vert_index", toggle=True)
+        row = col.row(align=True)
+        row.active = context.mode == "EDIT_MESH" and context.scene.display_indices == 1
+        row.prop(context.scene, "live_mode")
         
        
     #This is Panel A - The Scale Sub Panel (Child of MainPanel)
@@ -270,9 +366,26 @@ class PanelC(bpy.types.Panel):
         row.label(text= "Select a Special Option", icon= 'COLOR_BLUE')
        
         
-       
+def register_properties():
+    bpy.types.Scene.display_indices = bpy.props.IntProperty(
+        name="Display indices",
+        default=0)
+    bpy.types.Scene.display_vert_index = bpy.props.BoolProperty(
+        name="Vertices",
+        description="Display vertex indices", default=True)
+    bpy.types.Scene.live_mode = bpy.props.BoolProperty(
+        name="Live",
+        description="Toggle live update of the selection, can be slow",
+        default=False)
+
+def unregister_properties():
+    del bpy.types.Scene.display_indices
+    del bpy.types.Scene.display_vert_index
+    del bpy.types.Scene.live_mode
+
     #Here we are Registering the Classes        
 def register():
+    register_properties()
     bpy.utils.register_class(MainPanel)
     bpy.utils.register_class(PanelA)
     bpy.utils.register_class(PanelB)
@@ -284,10 +397,11 @@ def register():
     bpy.utils.register_class(WM_OT_AddTrackedPoints)
     bpy.utils.register_class(WM_OT_ResetTrackedPoints)
     bpy.utils.register_class(WM_OT_PopSelectedPoints)
-   
+    bpy.utils.register_class(IndexVisualiser)
     
     #Here we are UnRegistering the Classes    
 def unregister():
+    unregister_properties()
     bpy.utils.unregister_class(MainPanel)
     bpy.utils.unregister_class(PanelA)
     bpy.utils.unregister_class(PanelB)
@@ -299,6 +413,7 @@ def unregister():
     bpy.utils.unregister_class(WM_OT_AddTrackedPoints)
     bpy.utils.unregister_class(WM_OT_ResetTrackedPoints)
     bpy.utils.unregister_class(WM_OT_PopSelectedPoints)
+    bpy.utils.unregister_class(IndexVisualiser)
    
     #This is required in order for the script to run in the text editor    
 if __name__ == "__main__":
