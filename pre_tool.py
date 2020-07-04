@@ -17,6 +17,7 @@ import os
 import pickle
 import bmesh
 import mathutils
+from bpy_extras.io_utils import ImportHelper
 import bgl
 import blf
 
@@ -24,6 +25,14 @@ def save_pickle_file(filename, file):
     with open(filename, 'wb') as f:
         pickle.dump(file, f)
         print("save {}".format(filename))
+
+def load_pickle_file(filename):
+    if os.path.exists(filename):
+        with open(filename, "rb") as f:
+            file = pickle.load(f)
+        return file
+    else:
+        print("{} not exist".format(filename))
 
 tracked_points_index = []
 
@@ -135,7 +144,7 @@ class WM_OT_ResetTrackedPoints(bpy.types.Operator):
     bl_idname = "wm.reset_tracked_points"
     global tracked_points_index
     def execute(self, context):
-        tracked_points_index = []
+        tracked_points_index.clear()
         print("tracked_points_index is {}".format(tracked_points_index))
         return {'FINISHED'}
 
@@ -153,6 +162,45 @@ class WM_OT_PopSelectedPoints(bpy.types.Operator):
             tracked_points_index.pop(tracked_points_index.index(verts_index[0]))
         print("tracked_points_index is {}".format(tracked_points_index))
         return {'FINISHED'}
+
+class WM_OT_LoadTrackedPoints(bpy.types.Operator, ImportHelper):
+    """save obj ind"""
+    bl_label = "load obj ind file"
+    bl_idname = "wm.load_tracked_points"
+    global tracked_points_index
+    bpy.props.StringProperty(default= "*.pkl", options={'HIDDEN'}, maxlen=255)
+    def execute(self, context):
+        tracked_points_index = load_pickle_file(self.filepath)
+        print("tracked points is {}".format(tracked_points_index))
+        return {'FINISHED'}
+
+class WM_OT_AddHolePosition(bpy.types.Operator):
+    """save obj ind"""
+    bl_label = "add hole position"
+    bl_idname = "wm.add_hole_postion"
+    global tracked_points_index
+    bpy.props.StringProperty(default= "*.pkl", options={'HIDDEN'}, maxlen=255)
+    def execute(self, context):
+        ob = context.active_object
+        me = ob.data
+        for i in range(0, len(tracked_points_index)):
+            bpy.ops.mesh.primitive_uv_sphere_add(radius=0.1, enter_editmode=False, 
+            location=ob.matrix_world @ me.vertices[tracked_points_index[i]].co)
+        return {'FINISHED'}
+  
+
+class WM_OT_SaveTrackedPoints(bpy.types.Operator):
+    """save obj ind"""
+    bl_label = "save obj ind of the face"
+    bl_idname = "wm.save_selected_points"
+    global tracked_points_index
+    path = bpy.props.StringProperty(name= "SAVE PATH", default= "")
+    def execute(self, context):
+        save_pickle_file(os.path.join(self.path, "{}.pkl".format('obj_ind')) , tracked_points_index)
+        return {'FINISHED'}
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
     #def draw()
 class WM_OT_CreateVertexGroup(bpy.types.Operator):
     """create vertex group"""
@@ -291,15 +339,17 @@ class MainPanel(bpy.types.Panel):
         row = layout.row()
         row.label(text= "PREPARE FOR 3d PRINT", icon= 'OBJECT_ORIGIN')
         row = layout.row()
-        row.operator("mesh.primitive_uv_sphere_add", icon= 'CUBE', text= "Load From A Template")
+        row.operator("wm.load_tracked_points", icon= 'CUBE', text= "Load Tracked Points")
         row = layout.row()
-        row.operator("mesh.primitive_uv_sphere_add", icon= 'SPHERE', text= "Add 3d Hole Position")
+        row.operator("wm.add_hole_postion", icon= 'SPHERE', text= "Add 3d Hole Position")
         row = layout.row()
         row.operator("wm.add_tracked_points", icon= 'SPHERE', text= "Add Tracked Points")
         row = layout.row()
         row.operator("wm.pop_selected_points", icon= 'SPHERE', text= "Pop Selected Points")
         row = layout.row()
         row.operator("wm.reset_tracked_points", icon= 'SPHERE', text= "Reset Tracked Points")
+        row = layout.row()
+        row.operator("wm.save_selected_points", icon= 'SPHERE', text= "Save Tracked Points")
         self.layout.separator()
         col = self.layout.column(align=True)
         col.operator("view3d.index_visualiser", text="Visualize indices")
@@ -398,6 +448,9 @@ def register():
     bpy.utils.register_class(WM_OT_ResetTrackedPoints)
     bpy.utils.register_class(WM_OT_PopSelectedPoints)
     bpy.utils.register_class(IndexVisualiser)
+    bpy.utils.register_class(WM_OT_SaveTrackedPoints)
+    bpy.utils.register_class(WM_OT_LoadTrackedPoints)
+    bpy.utils.register_class(WM_OT_AddHolePosition)
     
     #Here we are UnRegistering the Classes    
 def unregister():
@@ -414,6 +467,9 @@ def unregister():
     bpy.utils.unregister_class(WM_OT_ResetTrackedPoints)
     bpy.utils.unregister_class(WM_OT_PopSelectedPoints)
     bpy.utils.unregister_class(IndexVisualiser)
+    bpy.utils.unregister_class(WM_OT_SaveTrackedPoints)
+    bpy.utils.unregister_class(WM_OT_LoadTrackedPoints)
+    bpy.utils.unregister_class(WM_OT_AddHolePosition)
    
     #This is required in order for the script to run in the text editor    
 if __name__ == "__main__":
