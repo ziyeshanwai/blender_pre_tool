@@ -17,7 +17,7 @@ import os
 import pickle
 import bmesh
 import mathutils
-from bpy_extras.io_utils import ImportHelper
+from bpy_extras.io_utils import ImportHelper, ExportHelper
 import bgl
 import blf
 
@@ -47,7 +47,7 @@ def draw_callback_px(self, context):
     mid_y = region.height / 2
     width = region.width
     height = region.height
-    
+    print("tracked points is {}".format(tracked_points_index))
     # get matrices
     view_mat = context.space_data.region_3d.perspective_matrix
     ob_mat = context.active_object.matrix_world
@@ -113,7 +113,6 @@ class IndexVisualiser(bpy.types.Operator):
                 self._handle = bpy.types.SpaceView3D.draw_handler_add(draw_callback_px,
                     (self, context), 'WINDOW', 'POST_PIXEL')
                 context.window_manager.modal_handler_add(self)
-                print("add draw_callback_px")
                 return {"RUNNING_MODAL"}
             else:
                 # operator is called again, stop displaying
@@ -170,7 +169,7 @@ class WM_OT_LoadTrackedPoints(bpy.types.Operator, ImportHelper):
     global tracked_points_index
     bpy.props.StringProperty(default= "*.pkl", options={'HIDDEN'}, maxlen=255)
     def execute(self, context):
-        tracked_points_index = load_pickle_file(self.filepath)
+        tracked_points_index.extend(load_pickle_file(self.filepath))
         print("tracked points is {}".format(tracked_points_index))
         return {'FINISHED'}
 
@@ -189,17 +188,16 @@ class WM_OT_AddHolePosition(bpy.types.Operator):
         return {'FINISHED'}
   
 
-class WM_OT_SaveTrackedPoints(bpy.types.Operator):
+class WM_OT_SaveTrackedPoints(bpy.types.Operator, ExportHelper):
     """save obj ind"""
     bl_label = "save obj ind of the face"
     bl_idname = "wm.save_selected_points"
+    filename_ext = "*.pkl"
     global tracked_points_index
-    path = bpy.props.StringProperty(name= "SAVE PATH", default= "")
+    bpy.props.StringProperty(name='obj_ind.pkl', default=".pkl", options={'HIDDEN'}, maxlen=255)
     def execute(self, context):
-        save_pickle_file(os.path.join(self.path, "{}.pkl".format('obj_ind')) , tracked_points_index)
+        save_pickle_file(self.filepath, tracked_points_index)
         return {'FINISHED'}
-    def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self)
 
     #def draw()
 class WM_OT_CreateVertexGroup(bpy.types.Operator):
