@@ -34,7 +34,7 @@ def load_pickle_file(filename):
     else:
         print("{} not exist".format(filename))
 
-tracked_points_index = []
+
 
 def draw_callback_px(self, context):
     # polling
@@ -178,14 +178,27 @@ class WM_OT_AddHolePosition(bpy.types.Operator):
     bl_label = "add hole position"
     bl_idname = "wm.add_hole_postion"
     global tracked_points_index
-    bpy.props.StringProperty(default= "*.pkl", options={'HIDDEN'}, maxlen=255)
+    r = bpy.props.FloatProperty(name="radius",
+                  description="the postion radius",
+                  default=0.15,
+                  min= 0.0,
+                  max=0.5,
+                  soft_min=0.0,
+                  soft_max=0.5,
+                  step= 3,
+                  precision= 3,
+                  options= {'ANIMATABLE'},
+                  unit = 'LENGTH')
     def execute(self, context):
         ob = context.active_object
         me = ob.data
         for i in range(0, len(tracked_points_index)):
-            bpy.ops.mesh.primitive_uv_sphere_add(radius=0.1, enter_editmode=False, 
+            bpy.ops.mesh.primitive_uv_sphere_add(radius=self.r, enter_editmode=False, 
             location=ob.matrix_world @ me.vertices[tracked_points_index[i]].co)
         return {'FINISHED'}
+    def invoke(self, context, event):
+       
+        return context.window_manager.invoke_props_dialog(self)
   
 
 class WM_OT_SaveTrackedPoints(bpy.types.Operator, ExportHelper):
@@ -471,4 +484,6 @@ def unregister():
    
     #This is required in order for the script to run in the text editor    
 if __name__ == "__main__":
+    tracked_points_index = []
+    tracked_points_index.clear()
     register()
