@@ -21,6 +21,9 @@ from bpy_extras.io_utils import ImportHelper, ExportHelper
 import bgl
 import blf
 
+tracked_points_index = []
+tracked_points_index.clear()
+
 def save_pickle_file(filename, file):
     with open(filename, 'wb') as f:
         pickle.dump(file, f)
@@ -485,6 +488,5 @@ def unregister():
    
     #This is required in order for the script to run in the text editor    
 if __name__ == "__main__":
-    tracked_points_index = []
-    tracked_points_index.clear()
+    
     register()
