@@ -327,9 +327,10 @@ class WM_OT_MakeDir(bpy.types.Operator):
         if not os.path.exists(self.root_path):
             os.makedirs(self.root_path)
         os.makedirs(os.path.join(self.root_path, 'basemesh'))
-        os.makedirs(os.path.join(self.root_path, 'blender_paoject'))
+        os.makedirs(os.path.join(self.root_path, 'blender_project'))
         os.makedirs(os.path.join(self.root_path, 'contour'))
         os.makedirs(os.path.join(self.root_path, 'face_bs'))
+        os.makedirs(os.path.join(self.root_path, 'high_model'))
         return {'FINISHED'}
    
     def invoke(self, context, event):
