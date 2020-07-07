@@ -1,7 +1,7 @@
 bl_info = {
     "name": "AIFA PRE TOOL",
     "author": "liyouwang",
-    "version": (1, 1),
+    "version": (1, 2, 0),
     "blender": (2, 80, 0),
     "location": "View3D > Toolbar > AIFA PRE TOOL",
     "description": "aifa prepare tool",
