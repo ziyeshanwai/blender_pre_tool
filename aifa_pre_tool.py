@@ -50,7 +50,6 @@ def draw_callback_px(self, context):
     mid_y = region.height / 2
     width = region.width
     height = region.height
-    print("tracked points is {}".format(tracked_points_index))
     # get matrices
     view_mat = context.space_data.region_3d.perspective_matrix
     ob_mat = context.active_object.matrix_world
@@ -379,6 +378,44 @@ class WM_OT_GenContour(bpy.types.Operator):
     def invoke(self, context, event):
        
         return context.window_manager.invoke_props_dialog(self)
+
+class WM_OT_AddTrackedPointsProperty(bpy.types.Operator):
+    bl_label = "add_trackedpoints_property"
+    bl_idname = "wm.add_trackedpoints_property"
+    global tracked_points_index
+    
+    def execute(self, context):
+        ob = context.object
+        me = ob.data
+        bm = bmesh.from_edit_mesh(me)
+        id_layer = bm.verts.layers.int.new('id_layer')
+        for v in bm.verts:
+            if v.index in tracked_points_index:
+                bm.verts[v.index][id_layer] = tracked_points_index.index(v.index)
+            else:
+                bm.verts[v.index][id_layer] = -1
+        bmesh.update_edit_mesh(ob.data)
+        return {'FINISHED'}
+
+class WM_OT_UpdateTrackedPoints(bpy.types.Operator):
+
+    bl_label = "update tracked points_property"
+    bl_idname = "wm.update_trackedpoints"
+    global tracked_points_index
+    
+    def execute(self, context):
+        ob = context.object
+        me = ob.data
+        bm = bmesh.from_edit_mesh(me)
+        id_layer = bm.verts.layers.int.get('id_layer')
+        for v in bm.verts:
+            if v[id_layer] == -1:
+                continue
+            else: 
+                print('v[id_layer] is {}'.format(v[id_layer]))  
+                tracked_points_index[v[id_layer]]=v.index
+        return {'FINISHED'}
+
 class WM_OT_MakeDir(bpy.types.Operator):
     """open make dir dialog box"""
     bl_label = "make dir dialog box"
@@ -426,7 +463,11 @@ class MainPanel(bpy.types.Panel):
         row = layout.row()
         row.operator("wm.reset_tracked_points", icon= 'SPHERE', text= "Reset Tracked Points")
         row = layout.row()
+        row.operator("wm.select_selected_points", icon= 'CUBE', text= "select tracked points")
+        row = layout.row()
         row.operator("wm.save_selected_points", icon= 'SPHERE', text= "Save Tracked Points")
+        row = layout.row()
+        row.operator("wm.add_trackedpoints_property", icon= 'SPHERE', text= "Add Tracked Points Property")
         self.layout.separator()
         col = self.layout.column(align=True)
         col.operator("view3d.index_visualiser", text="Visualize indices")
@@ -455,11 +496,11 @@ class PanelA(bpy.types.Panel):
         row = layout.row()
         row.operator("wm.create_vertexgroup", icon= 'CUBE', text= "create default vertex group")
         row = layout.row()
-        row.operator("wm.select_selected_points", icon= 'CUBE', text= "select tracked points")
-        row = layout.row()
         row.operator("wm.save_ind", icon= 'CUBE', text= "save selected vertex index")
         row = layout.row()
         row.operator("wm.gen_contour", icon= 'CUBE', text= "save selected contour vertex index")
+        row = layout.row()
+        row.operator("wm.update_trackedpoints", icon= 'CUBE', text= "update tracked points")
     
     #This is Panel B - The Specials Sub Panel (Child of MainPanel)
 class PanelB(bpy.types.Panel):
@@ -532,6 +573,8 @@ def register():
     bpy.utils.register_class(WM_OT_AddHolePosition)
     bpy.utils.register_class(WM_OT_InsertTrackedPoints)
     bpy.utils.register_class(WM_OT_SlectTrackedPoints)
+    bpy.utils.register_class(WM_OT_AddTrackedPointsProperty)
+    bpy.utils.register_class(WM_OT_UpdateTrackedPoints)
     
     #Here we are UnRegistering the Classes    
 def unregister():
@@ -553,6 +596,8 @@ def unregister():
     bpy.utils.unregister_class(WM_OT_AddHolePosition)
     bpy.utils.unregister_class(WM_OT_InsertTrackedPoints)
     bpy.utils.unregister_class(WM_OT_SlectTrackedPoints)
+    bpy.utils.unregister_class(WM_OT_AddTrackedPointsProperty)
+    bpy.utils.unregister_class(WM_OT_UpdateTrackedPoints)
    
     #This is required in order for the script to run in the text editor    
 if __name__ == "__main__":
