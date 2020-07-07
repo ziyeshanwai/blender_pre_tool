@@ -248,15 +248,31 @@ class WM_OT_InsertTrackedPoints(bpy.types.Operator):
     def invoke(self, context, event):
        
         return context.window_manager.invoke_props_dialog(self)
-          
+
+class WM_OT_SlectTrackedPoints(bpy.types.Operator):
+    """
+    select tracke poinst
+    """
+    bl_label = "select obj ind of the face"
+    bl_idname = "wm.select_selected_points"
+    global tracked_points_index
+    def execute(self, context):
+        ob = context.object
+        me = ob.data
+        bm = bmesh.from_edit_mesh(me)
+        for i in tracked_points_index:
+            bm.verts[i].select_set(True)
+        bm.select_flush(True)
+        bmesh.update_edit_mesh(ob.data)
+        return {'FINISHED'}        
 
 class WM_OT_SaveTrackedPoints(bpy.types.Operator, ExportHelper):
     """save obj ind"""
     bl_label = "save obj ind of the face"
     bl_idname = "wm.save_selected_points"
-    filename_ext = "*.pkl"
+    filename_ext = ".pkl"
     global tracked_points_index
-    bpy.props.StringProperty(name='obj_ind.pkl', default=".pkl", options={'HIDDEN'}, maxlen=255)
+    bpy.props.StringProperty(name='obj_ind path', default=".pkl", options={'HIDDEN'}, maxlen=255)
     def execute(self, context):
         save_pickle_file(self.filepath, tracked_points_index)
         return {'FINISHED'}
@@ -305,25 +321,21 @@ class WM_OT_CreateVertexGroup(bpy.types.Operator):
             context.active_object.vertex_groups.new(name='tracked_points')
         return {'FINISHED'}
 
-class WM_OT_SaveIndex(bpy.types.Operator):
+class WM_OT_SaveIndex(bpy.types.Operator, ExportHelper):
     """enter edit mode open save index dialog box"""
-    bl_label = "save index dialog box"
+    bl_label = "save index"
     bl_idname = "wm.save_ind"
-    path = bpy.props.StringProperty(name= "SAVE PATH", default= "")
-    name = bpy.props.StringProperty(name= "Save Name", default= "")
+    filename_ext = ".pkl"
+    bpy.props.StringProperty(name='path', default=".pkl", options={'HIDDEN'}, maxlen=255)
     def execute(self, context):
        
         ob = context.object
         me = ob.data
         bm = bmesh.from_edit_mesh(me)
         verts_index = [v.index for v in bm.verts if v.select]
-        save_pickle_file(os.path.join(self.path, "{}.pkl".format(self.name)) , verts_index)
+        save_pickle_file(self.filepath, verts_index)
        
-        return {'FINISHED'}
-   
-    def invoke(self, context, event):
-       
-        return context.window_manager.invoke_props_dialog(self)
+        return {'FINISHED'} 
 
 class WM_OT_GenContour(bpy.types.Operator):
     """generate contour"""
@@ -443,6 +455,8 @@ class PanelA(bpy.types.Panel):
         row = layout.row()
         row.operator("wm.create_vertexgroup", icon= 'CUBE', text= "create default vertex group")
         row = layout.row()
+        row.operator("wm.select_selected_points", icon= 'CUBE', text= "select tracked points")
+        row = layout.row()
         row.operator("wm.save_ind", icon= 'CUBE', text= "save selected vertex index")
         row = layout.row()
         row.operator("wm.gen_contour", icon= 'CUBE', text= "save selected contour vertex index")
@@ -517,6 +531,7 @@ def register():
     bpy.utils.register_class(WM_OT_LoadTrackedPoints)
     bpy.utils.register_class(WM_OT_AddHolePosition)
     bpy.utils.register_class(WM_OT_InsertTrackedPoints)
+    bpy.utils.register_class(WM_OT_SlectTrackedPoints)
     
     #Here we are UnRegistering the Classes    
 def unregister():
@@ -537,6 +552,7 @@ def unregister():
     bpy.utils.unregister_class(WM_OT_LoadTrackedPoints)
     bpy.utils.unregister_class(WM_OT_AddHolePosition)
     bpy.utils.unregister_class(WM_OT_InsertTrackedPoints)
+    bpy.utils.unregister_class(WM_OT_SlectTrackedPoints)
    
     #This is required in order for the script to run in the text editor    
 if __name__ == "__main__":
