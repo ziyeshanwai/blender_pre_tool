@@ -202,7 +202,53 @@ class WM_OT_AddHolePosition(bpy.types.Operator):
     def invoke(self, context, event):
        
         return context.window_manager.invoke_props_dialog(self)
-  
+
+class WM_OT_AddTrackedPointsVertexGroup(bpy.types.Operator):
+    """save obj ind"""
+    bl_label = "add hole position"
+    bl_idname = "wm.add_tracked_points_group"
+    global tracked_points_index
+    r = bpy.props.FloatProperty(name="radius",
+                  description="the postion radius",
+                  default=0.15,
+                  min= 0.0,
+                  max=0.5,
+                  soft_min=0.0,
+                  soft_max=0.5,
+                  step= 4,
+                  precision= 4,
+                  options= {'ANIMATABLE'},
+                  unit = 'LENGTH')
+    def execute(self, context):
+        ob = context.active_object
+        me = ob.data
+        for i in range(0, len(tracked_points_index)):
+            bpy.ops.mesh.primitive_uv_sphere_add(radius=self.r, enter_editmode=False, 
+            location=ob.matrix_world @ me.vertices[tracked_points_index[i]].co)
+        return {'FINISHED'}
+    def invoke(self, context, event):
+       
+        return context.window_manager.invoke_props_dialog(self)
+
+class WM_OT_InsertTrackedPoints(bpy.types.Operator):
+    """insert tracked points"""
+    bl_label = "insert obj ind of the face"
+    bl_idname = "wm.insert_selected_points"
+    global tracked_points_index
+    ind = bpy.props.IntProperty(name='index', default=0, min=0,max=250,soft_min=0,soft_max=250,step=1)
+    def execute(self, context):
+        ob = context.object
+        me = ob.data
+        bm = bmesh.from_edit_mesh(me)
+        verts_index = [v.index for v in bm.verts if v.select]
+        if verts_index[0] not in tracked_points_index:
+            tracked_points_index.insert(self.ind, verts_index[0])
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+       
+        return context.window_manager.invoke_props_dialog(self)
+          
 
 class WM_OT_SaveTrackedPoints(bpy.types.Operator, ExportHelper):
     """save obj ind"""
@@ -255,6 +301,8 @@ class WM_OT_CreateVertexGroup(bpy.types.Operator):
             context.active_object.vertex_groups.new(name='mouth_up_contour_2')
         if 'boundry' not in context.active_object.vertex_groups.keys():
             context.active_object.vertex_groups.new(name='boundry')
+        if 'tracked_points' not in context.active_object.vertex_groups.keys():
+            context.active_object.vertex_groups.new(name='tracked_points')
         return {'FINISHED'}
 
 class WM_OT_SaveIndex(bpy.types.Operator):
@@ -359,6 +407,8 @@ class MainPanel(bpy.types.Panel):
         row.operator("wm.add_hole_postion", icon= 'SPHERE', text= "Add 3d Hole Position")
         row = layout.row()
         row.operator("wm.add_tracked_points", icon= 'SPHERE', text= "Add Tracked Points")
+        row = layout.row()
+        row.operator("wm.insert_selected_points", icon= 'SPHERE', text= "Insert Current Points")
         row = layout.row()
         row.operator("wm.pop_selected_points", icon= 'SPHERE', text= "Pop Selected Points")
         row = layout.row()
@@ -466,6 +516,7 @@ def register():
     bpy.utils.register_class(WM_OT_SaveTrackedPoints)
     bpy.utils.register_class(WM_OT_LoadTrackedPoints)
     bpy.utils.register_class(WM_OT_AddHolePosition)
+    bpy.utils.register_class(WM_OT_InsertTrackedPoints)
     
     #Here we are UnRegistering the Classes    
 def unregister():
@@ -485,6 +536,7 @@ def unregister():
     bpy.utils.unregister_class(WM_OT_SaveTrackedPoints)
     bpy.utils.unregister_class(WM_OT_LoadTrackedPoints)
     bpy.utils.unregister_class(WM_OT_AddHolePosition)
+    bpy.utils.unregister_class(WM_OT_InsertTrackedPoints)
    
     #This is required in order for the script to run in the text editor    
 if __name__ == "__main__":
