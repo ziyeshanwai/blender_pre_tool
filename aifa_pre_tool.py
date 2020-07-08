@@ -171,6 +171,7 @@ class WM_OT_LoadTrackedPoints(bpy.types.Operator, ImportHelper):
     global tracked_points_index
     bpy.props.StringProperty(default= "*.pkl", options={'HIDDEN'}, maxlen=255)
     def execute(self, context):
+        tracked_points_index.clear()
         tracked_points_index.extend(load_pickle_file(self.filepath))
         print("tracked points is {}".format(tracked_points_index))
         return {'FINISHED'}
@@ -396,6 +397,22 @@ class WM_OT_AddTrackedPointsProperty(bpy.types.Operator):
                 bm.verts[v.index][id_layer] = -1
         bmesh.update_edit_mesh(ob.data)
         return {'FINISHED'}
+
+class WM_OT_BatchConvertHeadBs(bpy.types.Operator, ImportHelper):
+    bl_label = "add_trackedpoints_property"
+    bl_idname = "wm.add_trackedpoints_property"
+    global tracked_points_index
+    head_file = bpy.props.StringProperty(name= "Head PATH", default= "")
+    face_file = bpy.props.StringProperty(name= "Face PATH", default= "")
+    SavePath = bpy.props.StringProperty(name= "Save PATH", default= "")
+    def execute(self, context):
+        
+        return {'FINISHED'}
+    
+     def invoke(self, context, event):
+       
+        return context.window_manager.invoke_props_dialog(self)
+
 
 class WM_OT_UpdateTrackedPoints(bpy.types.Operator):
 
