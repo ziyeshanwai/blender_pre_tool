@@ -339,7 +339,7 @@ class WM_OT_SaveIndex(bpy.types.Operator, ExportHelper):
 
 class WM_OT_GenContour(bpy.types.Operator):
     """generate contour"""
-    bl_label = "make dir dialog box"
+    bl_label = "gen contour dialog box"
     bl_idname = "wm.gen_contour"
     save_path = bpy.props.StringProperty(name= "SAVE PATH", default= "")
     def execute(self, context):
@@ -398,22 +398,6 @@ class WM_OT_AddTrackedPointsProperty(bpy.types.Operator):
         bmesh.update_edit_mesh(ob.data)
         return {'FINISHED'}
 
-class WM_OT_BatchConvertHeadBs(bpy.types.Operator, ImportHelper):
-    bl_label = "add_trackedpoints_property"
-    bl_idname = "wm.add_trackedpoints_property"
-    global tracked_points_index
-    head_file = bpy.props.StringProperty(name= "Head PATH", default= "")
-    face_file = bpy.props.StringProperty(name= "Face PATH", default= "")
-    SavePath = bpy.props.StringProperty(name= "Save PATH", default= "")
-    def execute(self, context):
-        
-        return {'FINISHED'}
-    
-     def invoke(self, context, event):
-       
-        return context.window_manager.invoke_props_dialog(self)
-
-
 class WM_OT_UpdateTrackedPoints(bpy.types.Operator):
 
     bl_label = "update tracked points_property"
@@ -437,17 +421,18 @@ class WM_OT_MakeDir(bpy.types.Operator):
     """open make dir dialog box"""
     bl_label = "make dir dialog box"
     bl_idname = "wm.make_dir"
+    actor_name = bpy.props.StringProperty(name="actor name", default="zhaoshan")
     root_path = bpy.props.StringProperty(name= "ROOT PATH", default= "")
    
     def execute(self, context):
        
         if not os.path.exists(self.root_path):
             os.makedirs(self.root_path)
-        os.makedirs(os.path.join(self.root_path, 'basemesh'))
-        os.makedirs(os.path.join(self.root_path, 'blender_project'))
-        os.makedirs(os.path.join(self.root_path, 'contour'))
-        os.makedirs(os.path.join(self.root_path, 'face_bs'))
-        os.makedirs(os.path.join(self.root_path, 'high_model'))
+        os.makedirs(os.path.join(self.root_path, actor_name, 'basemesh'))
+        os.makedirs(os.path.join(self.root_path, actor_name, 'blender_project'))
+        os.makedirs(os.path.join(self.root_path, actor_name, 'contour'))
+        os.makedirs(os.path.join(self.root_path, actor_name, 'face_bs'))
+        os.makedirs(os.path.join(self.root_path, actor_name, 'high_model'))
         return {'FINISHED'}
    
     def invoke(self, context, event):
