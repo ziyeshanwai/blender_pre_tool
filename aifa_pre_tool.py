@@ -428,17 +428,43 @@ class WM_OT_MakeDir(bpy.types.Operator):
        
         if not os.path.exists(self.root_path):
             os.makedirs(self.root_path)
-        os.makedirs(os.path.join(self.root_path, actor_name, 'basemesh'))
-        os.makedirs(os.path.join(self.root_path, actor_name, 'blender_project'))
-        os.makedirs(os.path.join(self.root_path, actor_name, 'contour'))
-        os.makedirs(os.path.join(self.root_path, actor_name, 'face_bs'))
-        os.makedirs(os.path.join(self.root_path, actor_name, 'high_model'))
+        os.makedirs(os.path.join(self.root_path, self.actor_name, 'basemesh'))
+        os.makedirs(os.path.join(self.root_path, self.actor_name, 'blender_project'))
+        os.makedirs(os.path.join(self.root_path, self.actor_name, 'contour'))
+        os.makedirs(os.path.join(self.root_path, self.actor_name, 'face_bs'))
+        os.makedirs(os.path.join(self.root_path, self.actor_name, 'high_model'))
         return {'FINISHED'}
    
     def invoke(self, context, event):
        
         return context.window_manager.invoke_props_dialog(self)
  
+class WM_OT_GenerateMorph(bpy.types.Operator):
+    """open generate morph target box"""
+    bl_label = "generate morph target"
+    bl_idname = "wm.gen_morph"
+    bs_path = bpy.props.StringProperty(name="blendshape path", default="")
+    base_name = bpy.props.StringProperty(name= "basemesh name", default= "head_geo.obj")
+   
+    def execute(self, context):
+        filenames = os.listdir(self.bs_path)
+        for file in filenames:
+            if file.endswith(".obj"):
+                bpy.ops.import_scene.obj(filepath=os.path.join(self.bs_path, file), use_split_objects=False,split_mode='OFF')
+                bpy.context.selected_objects[0].name = file[:-4]
+        for obj in filenames:
+            if obj.endswith(".obj"):
+                bpy.data.objects[obj[:-4]].select_set(True)
+        bpy.context.view_layer.objects.active = bpy.context.selected_objects[-1]
+        bpy.context.view_layer.objects.active = bpy.data.objects[self.base_name[:-4]]
+        bpy.ops.object.join_shapes()
+        bpy.data.objects[self.base_name[:-4]].select_set(False)
+        bpy.ops.object.delete()
+        return {'FINISHED'}
+   
+    def invoke(self, context, event):
+       
+        return context.window_manager.invoke_props_dialog(self)
     #This is the Main Panel (Parent of Panel A and B)
 class MainPanel(bpy.types.Panel):
     bl_label = "AIFA PRE TOOL"
@@ -518,7 +544,7 @@ class PanelB(bpy.types.Panel):
         layout = self.layout
         row = layout.row()
         row.operator("object.shade_smooth", icon= 'MOD_SMOOTH', text= "Generate Config File")
-        row.operator("object.subdivision_set", icon= 'MOD_SUBSURF', text= "Snapsolver")
+        row.operator("wm.gen_morph", icon= 'MOD_SUBSURF', text= "GenarateShapeKey")
         row = layout.row()
         row.operator("object.modifier_add", icon= 'MODIFIER')
 
@@ -577,6 +603,7 @@ def register():
     bpy.utils.register_class(WM_OT_SlectTrackedPoints)
     bpy.utils.register_class(WM_OT_AddTrackedPointsProperty)
     bpy.utils.register_class(WM_OT_UpdateTrackedPoints)
+    bpy.utils.register_class(WM_OT_GenerateMorph)
     
     #Here we are UnRegistering the Classes    
 def unregister():
@@ -600,6 +627,7 @@ def unregister():
     bpy.utils.unregister_class(WM_OT_SlectTrackedPoints)
     bpy.utils.unregister_class(WM_OT_AddTrackedPointsProperty)
     bpy.utils.unregister_class(WM_OT_UpdateTrackedPoints)
+    bpy.utils.unregister_class(WM_OT_GenerateMorph)
    
     #This is required in order for the script to run in the text editor    
 if __name__ == "__main__":
