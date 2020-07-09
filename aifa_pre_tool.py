@@ -1,7 +1,7 @@
 bl_info = {
     "name": "AIFA PRE TOOL",
     "author": "liyouwang",
-    "version": (1, 2, 0),
+    "version": (1, 2, 1),
     "blender": (2, 80, 0),
     "location": "View3D > Toolbar > AIFA PRE TOOL",
     "description": "aifa prepare tool",
@@ -20,6 +20,7 @@ import mathutils
 from bpy_extras.io_utils import ImportHelper, ExportHelper
 import bgl
 import blf
+import numpy as np
 
 tracked_points_index = []
 tracked_points_index.clear()
@@ -447,7 +448,7 @@ class WM_OT_GenerateMorph(bpy.types.Operator):
     base_name = bpy.props.StringProperty(name= "basemesh name", default= "head_geo.obj")
    
     def execute(self, context):
-        filenames = os.listdir(self.bs_path)
+        filenames = sorted(os.listdir(self.bs_path))
         for file in filenames:
             if file.endswith(".obj"):
                 bpy.ops.import_scene.obj(filepath=os.path.join(self.bs_path, file), use_split_objects=False,split_mode='OFF')
@@ -465,6 +466,63 @@ class WM_OT_GenerateMorph(bpy.types.Operator):
     def invoke(self, context, event):
        
         return context.window_manager.invoke_props_dialog(self)
+
+class WM_OT_ImportShapesKeyAnimation(bpy.types.Operator):
+    """Open ShapesKey Animation Target Box"""
+    bl_label = "import shapekeys animation"
+    bl_idname = "wm.import_shapekeys_animation"
+   
+    def execute(self, context):
+        obj = context.object
+        weights_list_path = obj.aifa_animation_settings.weightListPath
+        blendeshape_path = obj.aifa_animation_settings.BlendShapePath
+        weights_name = obj.aifa_animation_settings.weightlistName
+        shapkeysname = obj.aifa_animation_settings.ShapeKeysName
+        reloadanimation = obj.aifa_animation_settings.reloadAnimation
+        base_mesh_name = obj.aifa_animation_settings.base_mesh_name
+        if os.path.exists(os.path.join(weights_list_path, weights_name)):
+            filenames = load_pickle_file(os.path.join(weights_list_path, shapkeysname))
+        else:
+            filenames = sorted(os.listdir(blendeshape_path))
+        print("file names is {}".format(filenames))
+        if not reloadanimation:
+            for file in filenames:
+                if file.endswith(".obj"):
+                    bpy.ops.import_scene.obj(filepath=os.path.join(blendeshape_path, file), use_split_objects=False,split_mode='OFF')
+                    bpy.context.selected_objects[0].name = file[:-4]
+            
+            for obj in bpy.context.scene.objects:
+                if obj.name + ".obj" in filenames:
+                    obj.select_set(True)
+            bpy.context.view_layer.objects.active = bpy.data.objects[base_mesh_name[:-4]]
+            bpy.ops.object.join_shapes()
+            bpy.data.objects[base_mesh_name[:-4]].select_set(False)
+            bpy.ops.object.delete()
+        
+
+        weights_list_path = os.path.join(weights_list_path, weights_name)
+        weights_list = load_pickle_file(weights_list_path)
+        weights = np.array(weights_list, dtype=np.float32)
+        slid_max = np.max(weights, axis = 0)
+        slid_min = np.min(weights, axis = 0)
+        bpy.context.view_layer.objects.active = bpy.data.objects[base_mesh_name[:-4]]
+        ob = bpy.context.active_object
+        filenames.remove(base_mesh_name)
+        for frame in range(0, len(weights_list)):
+            weight = weights_list[frame]
+            if frame % 100 == 0:
+                print("insert frame {}".format(frame))
+            for i, file in enumerate(filenames):
+                ob.data.shape_keys.name = "key"
+                if slid_max[i] > 1:
+                    bpy.data.shape_keys[0].key_blocks[file[:-4]].slider_max = slid_max[i] + 1
+                if slid_min[i] < 0:
+                    bpy.data.shape_keys[0].key_blocks[file[:-4]].slider_min = slid_min[i] - 1
+                ob.data.shape_keys.key_blocks[file[:-4]].value=weight[i, 0]
+                ob.data.shape_keys.key_blocks[file[:-4]].keyframe_insert("value", frame=frame)
+        return {'FINISHED'}
+    
+    
     #This is the Main Panel (Parent of Panel A and B)
 class MainPanel(bpy.types.Panel):
     bl_label = "AIFA PRE TOOL"
@@ -541,12 +599,27 @@ class PanelB(bpy.types.Panel):
     bl_options = {'DEFAULT_CLOSED'}
    
     def draw(self, context):
+        obj = context.object
+        objSettings = obj.aifa_animation_settings
         layout = self.layout
         row = layout.row()
         row.operator("object.shade_smooth", icon= 'MOD_SMOOTH', text= "Generate Config File")
         row.operator("wm.gen_morph", icon= 'MOD_SUBSURF', text= "GenarateShapeKey")
         row = layout.row()
-        row.operator("object.modifier_add", icon= 'MODIFIER')
+        row.prop(objSettings, "weightListPath")
+        row = layout.row()
+        row.prop(objSettings, "BlendShapePath")
+        row = layout.row()
+        row.prop(objSettings, "weightlistName")
+        row = layout.row()
+        row.prop(objSettings, "ShapeKeysName")
+        row = layout.row()
+        row.prop(objSettings, "base_mesh_name")
+        row = layout.row()
+        row.prop(objSettings, "reloadAnimation")
+        row = layout.row()
+        row.operator("wm.import_shapekeys_animation", icon= 'CUBE', text= "import animation")
+        
 
 class PanelC(bpy.types.Panel):
     bl_label = "DEBUG TOOL"
@@ -562,7 +635,54 @@ class PanelC(bpy.types.Panel):
        
         row = layout.row()
         row.label(text= "Select a Special Option", icon= 'COLOR_BLUE')
-       
+class AifaImportAnimationSettings(bpy.types.PropertyGroup):
+    weightListPath: bpy.props.StringProperty(
+        name="weightListPath",
+        description="Only .OBJ files will be listed",
+        subtype="DIR_PATH")
+    BlendShapePath: bpy.props.StringProperty(
+        name="BlendShape Path",
+        description="blendshape path",
+        subtype="DIR_PATH")
+    weightlistName: bpy.props.StringProperty(name='weightlistName')
+    
+    ShapeKeysName: bpy.props.StringProperty()
+    base_mesh_name: bpy.props.StringProperty(default='head_geo.obj')
+    reloadAnimation: bpy.props.BoolProperty(default=False)
+    loaded: bpy.props.BoolProperty(default=False)
+    
+    #out-of-range frame mode
+    frameMode: bpy.props.EnumProperty(
+        items = [('0', 'Blank', 'Object disappears when frame is out of range'),
+                ('1', 'Extend', 'First and last frames are duplicated'),
+                ('2', 'Repeat', 'Repeat the animation'),
+                ('3', 'Bounce', 'Play in reverse at the end of the frame range')],
+        name='Frame Mode',
+        default='1')
+    
+    #material mode (one material total or one material per frame)
+    perFrameMaterial: bpy.props.BoolProperty(
+        name='Material per Frame',
+        default=False
+    )
+    
+    #playback speed
+    speed: bpy.props.FloatProperty(
+        name='Playback Speed',
+        min=0.0001,
+        soft_min=0.01,
+        step=25,
+        precision=2,
+        default=1
+    )
+    
+    #the file format for files in the sequence (OBJ, STL, or PLY)
+    fileFormat: bpy.props.EnumProperty(
+        items = [('0', 'OBJ', 'Wavefront OBJ'),
+                ('1', 'STL', 'STereoLithography'),
+                ('2', 'PLY', 'Stanford PLY')],
+        name='File Format',
+        default='0')       
         
 def register_properties():
     bpy.types.Scene.display_indices = bpy.props.IntProperty(
@@ -584,6 +704,9 @@ def unregister_properties():
     #Here we are Registering the Classes        
 def register():
     register_properties()
+    bpy.utils.register_class(AifaImportAnimationSettings)
+    #add this settings class to bpy.types.Object
+    bpy.types.Object.aifa_animation_settings = bpy.props.PointerProperty(type=AifaImportAnimationSettings)
     bpy.utils.register_class(MainPanel)
     bpy.utils.register_class(PanelA)
     bpy.utils.register_class(PanelB)
@@ -604,6 +727,7 @@ def register():
     bpy.utils.register_class(WM_OT_AddTrackedPointsProperty)
     bpy.utils.register_class(WM_OT_UpdateTrackedPoints)
     bpy.utils.register_class(WM_OT_GenerateMorph)
+    bpy.utils.register_class(WM_OT_ImportShapesKeyAnimation)
     
     #Here we are UnRegistering the Classes    
 def unregister():
@@ -612,6 +736,7 @@ def unregister():
     bpy.utils.unregister_class(PanelA)
     bpy.utils.unregister_class(PanelB)
     bpy.utils.unregister_class(PanelC)
+    bpy.utils.unregister_class(AifaImportAnimationSettings)
     bpy.utils.unregister_class(WM_OT_MakeDir)
     bpy.utils.unregister_class(WM_OT_SaveIndex)
     bpy.utils.unregister_class(WM_OT_CreateVertexGroup)
@@ -628,6 +753,7 @@ def unregister():
     bpy.utils.unregister_class(WM_OT_AddTrackedPointsProperty)
     bpy.utils.unregister_class(WM_OT_UpdateTrackedPoints)
     bpy.utils.unregister_class(WM_OT_GenerateMorph)
+    bpy.utils.unregister_class(WM_OT_ImportShapesKeyAnimation)
    
     #This is required in order for the script to run in the text editor    
 if __name__ == "__main__":
