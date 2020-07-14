@@ -1,7 +1,7 @@
 bl_info = {
     "name": "AIFA PRE TOOL",
     "author": "liyouwang",
-    "version": (1, 2, 1),
+    "version": (1, 2, 2),
     "blender": (2, 80, 0),
     "location": "View3D > Toolbar > AIFA PRE TOOL",
     "description": "aifa prepare tool",
@@ -521,7 +521,28 @@ class WM_OT_ImportShapesKeyAnimation(bpy.types.Operator):
                 ob.data.shape_keys.key_blocks[file[:-4]].value=weight[i, 0]
                 ob.data.shape_keys.key_blocks[file[:-4]].keyframe_insert("value", frame=frame)
         return {'FINISHED'}
+
+class WM_OT_SelectExportedPoints(bpy.types.Operator, ImportHelper):
+    """edit mode dispaly select points"""
+    bl_label = "import export points"
+    bl_idname = "wm.select_exported_points"
+
+    bpy.props.StringProperty(default= "*.pkl", options={'HIDDEN'}, maxlen=255)
     
+    @classmethod
+    def poll(cls, context):
+        return context.mode=="EDIT_MESH"
+
+    def execute(self, context):
+        ob = context.object
+        me = ob.data
+        bm = bmesh.from_edit_mesh(me)
+        index = load_pickle_file(self.filepath)
+        for ind in index:
+            bm.verts[ind].select_set(True)
+        bm.select_flush(True)
+        bmesh.update_edit_mesh(ob.data)
+        return {'FINISHED'}    
     
     #This is the Main Panel (Parent of Panel A and B)
 class MainPanel(bpy.types.Panel):
@@ -620,7 +641,6 @@ class PanelB(bpy.types.Panel):
         row = layout.row()
         row.operator("wm.import_shapekeys_animation", icon= 'CUBE', text= "import animation")
         
-
 class PanelC(bpy.types.Panel):
     bl_label = "DEBUG TOOL"
     bl_idname = "VIEW_PT_PanelC"
@@ -632,9 +652,8 @@ class PanelC(bpy.types.Panel):
    
     def draw(self, context):
         layout = self.layout
-       
         row = layout.row()
-        row.label(text= "Select a Special Option", icon= 'COLOR_BLUE')
+        row.operator("wm.select_exported_points", icon= 'CUBE', text= "import exported points")
 class AifaImportAnimationSettings(bpy.types.PropertyGroup):
     weightListPath: bpy.props.StringProperty(
         name="weightListPath",
@@ -728,6 +747,7 @@ def register():
     bpy.utils.register_class(WM_OT_UpdateTrackedPoints)
     bpy.utils.register_class(WM_OT_GenerateMorph)
     bpy.utils.register_class(WM_OT_ImportShapesKeyAnimation)
+    bpy.utils.register_class(WM_OT_SelectExportedPoints)
     
     #Here we are UnRegistering the Classes    
 def unregister():
@@ -754,6 +774,7 @@ def unregister():
     bpy.utils.unregister_class(WM_OT_UpdateTrackedPoints)
     bpy.utils.unregister_class(WM_OT_GenerateMorph)
     bpy.utils.unregister_class(WM_OT_ImportShapesKeyAnimation)
+    bpy.utils.unregister_class(WM_OT_SelectExportedPoints)
    
     #This is required in order for the script to run in the text editor    
 if __name__ == "__main__":
