@@ -531,7 +531,33 @@ class WM_OT_SelectExportedPoints(bpy.types.Operator, ImportHelper):
     
     @classmethod
     def poll(cls, context):
-        return context.mode=="EDIT_MESH"
+        return context.mode=="EDIT_MESH"  # 如果不是edit mode, 按钮会变成非激活状态
+
+    def execute(self, context):
+        ob = context.object
+        me = ob.data
+        bm = bmesh.from_edit_mesh(me)
+        index = load_pickle_file(self.filepath)
+        print("{} index is {}".format(self.filepath, index))
+        for ind in index:
+            bm.verts[ind].select_set(True)
+        bm.select_flush(True)
+        bmesh.update_edit_mesh(ob.data)
+        return {'FINISHED'}
+
+"""
+TODO:
+"""
+class WM_OT_ImportKeyPointsAnimation(bpy.types.Operator):
+    """import key points animation"""
+    bl_label = "import key points animation"
+    bl_idname = "wm.import_keypoints_animation"
+
+    bpy.props.StringProperty(default= "*.pkl", options={'HIDDEN'}, maxlen=255)
+    
+    @classmethod
+    def poll(cls, context):
+        return context.mode=="EDIT_MESH"  # 如果不是edit mode, 按钮会变成非激活状态
 
     def execute(self, context):
         ob = context.object
@@ -542,7 +568,12 @@ class WM_OT_SelectExportedPoints(bpy.types.Operator, ImportHelper):
             bm.verts[ind].select_set(True)
         bm.select_flush(True)
         bmesh.update_edit_mesh(ob.data)
-        return {'FINISHED'}    
+        return {'FINISHED'}
+
+    def invoke(self, context):
+        
+        return context.window_manager.invoke_props_dialog(self)
+    
     
     #This is the Main Panel (Parent of Panel A and B)
 class MainPanel(bpy.types.Panel):
