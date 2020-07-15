@@ -21,6 +21,7 @@ from bpy_extras.io_utils import ImportHelper, ExportHelper
 import bgl
 import blf
 import numpy as np
+from mathutils import Vector
 
 tracked_points_index = []
 tracked_points_index.clear()
@@ -546,32 +547,36 @@ class WM_OT_SelectExportedPoints(bpy.types.Operator, ImportHelper):
         return {'FINISHED'}
 
 """
-TODO:
+TODO: visulize 3d key points
 """
 class WM_OT_ImportKeyPointsAnimation(bpy.types.Operator):
     """import key points animation"""
     bl_label = "import key points animation"
     bl_idname = "wm.import_keypoints_animation"
 
-    bpy.props.StringProperty(default= "*.pkl", options={'HIDDEN'}, maxlen=255)
+    points_path = bpy.props.StringProperty(name='POINTS PATH', default= "")
     
     @classmethod
     def poll(cls, context):
-        return context.mode=="EDIT_MESH"  # 如果不是edit mode, 按钮会变成非激活状态
+        return context.mode=="OBJECT"  # 如果不是edit mode, 按钮会变成非激活状态
 
     def execute(self, context):
-        ob = context.object
-        me = ob.data
-        bm = bmesh.from_edit_mesh(me)
-        index = load_pickle_file(self.filepath)
-        for ind in index:
-            bm.verts[ind].select_set(True)
-        bm.select_flush(True)
-        bmesh.update_edit_mesh(ob.data)
+        points_name_list = os.listdir(self.points_path)
+        points = load_pickle_file(os.path.join(self.points_path, "{}".format(points_name_list[0])))
+        for i in range(0, len(points)):
+            bpy.ops.mesh.primitive_uv_sphere_add(radius=0.1, enter_editmode=False, align='WORLD', location=(0,0,0))
+            bpy.context.selected_objects[0].name = str(i)
+
+        for i, name in enumerate(points_name_list):
+            points = load_pickle_file(os.path.join(self.points_path, name))
+        # print(points.shape)
+            for j in range(0, len(points)):
+                bpy.data.objects[str(j)].location = bpy.data.objects[str(j)].matrix_world @ Vector(points[j, :])
+                bpy.data.objects[str(j)].keyframe_insert(data_path="location",frame=i)
         return {'FINISHED'}
 
-    def invoke(self, context):
-        
+    def invoke(self, context, event):
+
         return context.window_manager.invoke_props_dialog(self)
     
     
@@ -685,6 +690,8 @@ class PanelC(bpy.types.Panel):
         layout = self.layout
         row = layout.row()
         row.operator("wm.select_exported_points", icon= 'CUBE', text= "import exported points")
+        row = layout.row()
+        row.operator("wm.import_keypoints_animation", icon= 'CUBE', text= "import keyframe animation")
 class AifaImportAnimationSettings(bpy.types.PropertyGroup):
     weightListPath: bpy.props.StringProperty(
         name="weightListPath",
@@ -779,6 +786,7 @@ def register():
     bpy.utils.register_class(WM_OT_GenerateMorph)
     bpy.utils.register_class(WM_OT_ImportShapesKeyAnimation)
     bpy.utils.register_class(WM_OT_SelectExportedPoints)
+    bpy.utils.register_class(WM_OT_ImportKeyPointsAnimation)
     
     #Here we are UnRegistering the Classes    
 def unregister():
@@ -806,6 +814,7 @@ def unregister():
     bpy.utils.unregister_class(WM_OT_GenerateMorph)
     bpy.utils.unregister_class(WM_OT_ImportShapesKeyAnimation)
     bpy.utils.unregister_class(WM_OT_SelectExportedPoints)
+    bpy.utils.unregister_class(WM_OT_ImportKeyPointsAnimation)
    
     #This is required in order for the script to run in the text editor    
 if __name__ == "__main__":
