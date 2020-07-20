@@ -569,7 +569,7 @@ class WM_OT_ImportKeyPointsAnimation(bpy.types.Operator):
 
         for i, name in enumerate(points_name_list):
             points = load_pickle_file(os.path.join(self.points_path, name))
-            if i % 100 == 0：
+            if i % 100 == 0:
                 print('intsert keyframe {}'.format(i))
             for j in range(0, len(points)):
                 bpy.data.objects[str(j)].location = bpy.data.objects[str(j)].matrix_world @ Vector(points[j, :])
