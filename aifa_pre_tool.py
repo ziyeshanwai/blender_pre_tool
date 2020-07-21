@@ -546,9 +546,30 @@ class WM_OT_SelectExportedPoints(bpy.types.Operator, ImportHelper):
         bmesh.update_edit_mesh(ob.data)
         return {'FINISHED'}
 
-"""
-TODO: visulize 3d key points
-"""
+class export_anition_objs(bpy.types.Operator):
+    bl_label = "export animation objs"
+    bl_idname = "wm.export_obj_animation"
+
+    objs_path = bpy.props.StringProperty(name='OBJS PATH', default= "")
+    scale = bpy.props.FloatProperty(name='Scale', default=1.00, min=0, max=1000.0,soft_min=0,soft_max=1000, step=3, precision=3)
+    
+    @classmethod
+    def poll(cls, context):
+        return context.mode=="OBJECT"  # 如果不是edit mode, 按钮会变成非激活状态
+
+    def execute(self, context):
+        scene = context.scene
+        for frame in range(scene.frame_start, scene.frame_end):
+            scene.frame_set(frame)
+            bpy.context.view_layer.update()
+            the_file = scene.name + "_" + str(scene.frame_current) + '.obj'
+            bpy.ops.export_scene.obj(filepath=os.path.join(self.objs_path, the_file), check_existing=True, axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_selection=True, use_animation=False, use_mesh_modifiers=True, use_edges=True, use_smooth_groups=False, use_smooth_groups_bitflags=False, use_normals=False, use_uvs=False, use_materials=False, use_triangles=False, use_nurbs=False, use_vertex_groups=False, use_blen_objects=True, group_by_object=False, group_by_material=False, keep_vertex_order=True, global_scale=self.scale, path_mode='AUTO')
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+
+        return context.window_manager.invoke_props_dialog(self)
+
 class WM_OT_ImportKeyPointsAnimation(bpy.types.Operator):
     """import key points animation"""
     bl_label = "import key points animation"
@@ -678,6 +699,7 @@ class PanelB(bpy.types.Panel):
         row = layout.row()
         row.operator("wm.import_shapekeys_animation", icon= 'CUBE', text= "import animation")
         
+        
 class PanelC(bpy.types.Panel):
     bl_label = "DEBUG TOOL"
     bl_idname = "VIEW_PT_PanelC"
@@ -693,6 +715,8 @@ class PanelC(bpy.types.Panel):
         row.operator("wm.select_exported_points", icon= 'CUBE', text= "import exported points")
         row = layout.row()
         row.operator("wm.import_keypoints_animation", icon= 'CUBE', text= "import keyframe animation")
+        row = layout.row()
+        row.operator("wm.export_obj_animation", icon= 'CUBE', text= "export animation objs")
 class AifaImportAnimationSettings(bpy.types.PropertyGroup):
     weightListPath: bpy.props.StringProperty(
         name="weightListPath",
@@ -788,6 +812,7 @@ def register():
     bpy.utils.register_class(WM_OT_ImportShapesKeyAnimation)
     bpy.utils.register_class(WM_OT_SelectExportedPoints)
     bpy.utils.register_class(WM_OT_ImportKeyPointsAnimation)
+    bpy.utils.register_class(export_anition_objs)
     
     #Here we are UnRegistering the Classes    
 def unregister():
@@ -816,6 +841,7 @@ def unregister():
     bpy.utils.unregister_class(WM_OT_ImportShapesKeyAnimation)
     bpy.utils.unregister_class(WM_OT_SelectExportedPoints)
     bpy.utils.unregister_class(WM_OT_ImportKeyPointsAnimation)
+    bpy.utils.register_class(export_anition_objs)
    
     #This is required in order for the script to run in the text editor    
 if __name__ == "__main__":
