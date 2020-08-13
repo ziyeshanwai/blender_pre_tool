@@ -434,6 +434,7 @@ class WM_OT_MakeDir(bpy.types.Operator):
         os.makedirs(os.path.join(self.root_path, self.actor_name, 'blender_project'))
         os.makedirs(os.path.join(self.root_path, self.actor_name, 'contour'))
         os.makedirs(os.path.join(self.root_path, self.actor_name, 'face_bs'))
+        os.makedirs(os.path.join(self.root_path, self.actor_name, 'head_bs'))
         os.makedirs(os.path.join(self.root_path, self.actor_name, 'high_model'))
         return {'FINISHED'}
    
