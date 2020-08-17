@@ -547,7 +547,7 @@ class WM_OT_SelectExportedPoints(bpy.types.Operator, ImportHelper):
         bmesh.update_edit_mesh(ob.data)
         return {'FINISHED'}
 
-class export_anition_objs(bpy.types.Operator):
+class WM_OT_Export_Anition_Objs(bpy.types.Operator):
     bl_label = "export animation objs"
     bl_idname = "wm.export_obj_animation"
 
@@ -571,6 +571,36 @@ class export_anition_objs(bpy.types.Operator):
 
         return context.window_manager.invoke_props_dialog(self)
 
+class WM_OT_Export_Shapekeys(bpy.types.Operator):
+    bl_label = "export active object shapekeys"
+    bl_idname = "wm.export_shapekeys"
+
+    shapekeys_path = bpy.props.StringProperty(name='SHAPEKEYS PATH', default= "")
+    
+    @classmethod
+    def poll(cls, context):
+        return context.mode=="OBJECT"  # 如果不是edit mode, 按钮会变成非激活状态
+
+    def execute(self, context):
+        o = context.active_object 
+        for skblock in o.data.shape_keys.key_blocks[1:]:
+            skblock.value = 0
+        bpy.ops.export_scene.obj(filepath=os.path.join(self.shapekeys_path, 'head_geo.obj'), check_existing=True, axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_selection=True, use_animation=False, use_mesh_modifiers=True, use_edges=True, use_smooth_groups=False, use_smooth_groups_bitflags=False, use_normals=False, use_uvs=True, use_materials=False, use_triangles=False, use_nurbs=False, use_vertex_groups=False, use_blen_objects=True, group_by_object=False, group_by_material=False, keep_vertex_order=True, global_scale=1, path_mode='AUTO')
+        # Iterate over shape key blocks and save each as an OBJ file
+        for skblock in o.data.shape_keys.key_blocks[1:]:
+            skblock.value = 1.0  # Set shape key value to max
+
+            # Set OBJ file path and Export OBJ
+            objFileName = skblock.name + ".obj" # File name = shapekey name
+            objPath = os.path.join(self.shapekeys_path, objFileName)
+            bpy.ops.export_scene.obj(filepath=objPath, check_existing=True, axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_selection=True, use_animation=False, use_mesh_modifiers=True, use_edges=True, use_smooth_groups=False, use_smooth_groups_bitflags=False, use_normals=False, use_uvs=False, use_materials=False, use_triangles=False, use_nurbs=False, use_vertex_groups=False, use_blen_objects=True, group_by_object=False, group_by_material=False, keep_vertex_order=True, global_scale=1, path_mode='AUTO')
+            skblock.value = 0 # Reset shape key value to 0
+        
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+
+        return context.window_manager.invoke_props_dialog(self)
 class WM_OT_ImportKeyPointsAnimation(bpy.types.Operator):
     """import key points animation"""
     bl_label = "import key points animation"
@@ -718,6 +748,8 @@ class PanelC(bpy.types.Panel):
         row.operator("wm.import_keypoints_animation", icon= 'CUBE', text= "import keyframe animation")
         row = layout.row()
         row.operator("wm.export_obj_animation", icon= 'CUBE', text= "export animation objs")
+        row = layout.row()
+        row.operator("wm.export_shapekeys", icon= 'CUBE', text= "export active object shapekeys")
 class AifaImportAnimationSettings(bpy.types.PropertyGroup):
     weightListPath: bpy.props.StringProperty(
         name="weightListPath",
@@ -813,7 +845,8 @@ def register():
     bpy.utils.register_class(WM_OT_ImportShapesKeyAnimation)
     bpy.utils.register_class(WM_OT_SelectExportedPoints)
     bpy.utils.register_class(WM_OT_ImportKeyPointsAnimation)
-    bpy.utils.register_class(export_anition_objs)
+    bpy.utils.register_class(WM_OT_Export_Anition_Objs)
+    bpy.utils.register_class(WM_OT_Export_Shapekeys)
     
     #Here we are UnRegistering the Classes    
 def unregister():
@@ -842,7 +875,8 @@ def unregister():
     bpy.utils.unregister_class(WM_OT_ImportShapesKeyAnimation)
     bpy.utils.unregister_class(WM_OT_SelectExportedPoints)
     bpy.utils.unregister_class(WM_OT_ImportKeyPointsAnimation)
-    bpy.utils.register_class(export_anition_objs)
+    bpy.utils.unregister_class(WM_OT_Export_Anition_Objs)
+    bpy.utils.unregister_class(WM_OT_Export_Shapekeys)
    
     #This is required in order for the script to run in the text editor    
 if __name__ == "__main__":
