@@ -510,16 +510,18 @@ class WM_OT_ImportShapesKeyAnimation(bpy.types.Operator):
         bpy.context.view_layer.objects.active = bpy.data.objects[base_mesh_name[:-4]]
         ob = bpy.context.active_object
         filenames.remove(base_mesh_name)
+        for i, file in enumerate(filenames):
+            ob.data.shape_keys.name = "key"
+            if slid_max[i] > 1:
+                ob.data.shape_keys.key_blocks[file[:-4]].slider_max = slid_max[i] + 1
+            if slid_min[i] < 0:
+                ob.data.shape_keys.key_blocks[file[:-4]].slider_min = slid_min[i] - 1
         for frame in range(0, len(weights_list)):
             weight = weights_list[frame]
             if frame % 100 == 0:
                 print("insert frame {}".format(frame))
             for i, file in enumerate(filenames):
                 ob.data.shape_keys.name = "key"
-                if slid_max[i] > 1:
-                    bpy.data.shape_keys[0].key_blocks[file[:-4]].slider_max = slid_max[i] + 1
-                if slid_min[i] < 0:
-                    bpy.data.shape_keys[0].key_blocks[file[:-4]].slider_min = slid_min[i] - 1
                 ob.data.shape_keys.key_blocks[file[:-4]].value=weight[i, 0]
                 ob.data.shape_keys.key_blocks[file[:-4]].keyframe_insert("value", frame=frame)
         return {'FINISHED'}
