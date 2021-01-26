@@ -604,6 +604,7 @@ class WM_OT_Export_Shapekeys(bpy.types.Operator):
 
         return context.window_manager.invoke_props_dialog(self)
 class WM_OT_ImportKeyPointsAnimation(bpy.types.Operator):
+
     """import key points animation"""
     bl_label = "import key points animation"
     bl_idname = "wm.import_keypoints_animation"
@@ -636,6 +637,23 @@ class WM_OT_ImportKeyPointsAnimation(bpy.types.Operator):
     
     
     #This is the Main Panel (Parent of Panel A and B)
+
+
+class WM_OT_Modify_Shapekey_Range(bpy.types.Operator):
+
+    """modify shapekey range"""
+    bl_label = "modify shapekey range"
+    bl_idname = "wm.modify_shapekey_range"
+    @classmethod
+    def poll(cls, context):
+        return context.mode=="OBJECT"  # 如果不是edit mode, 按钮会变成非激活状态
+
+    def execute(self, context):
+        for i in range(0, len(bpy.context.active_object.data.shape_keys.key_blocks)):
+            bpy.context.active_object.data.shape_keys.key_blocks[i].slider_min=-5
+            bpy.context.active_object.data.shape_keys.key_blocks[i].slider_max=5
+        return {'FINISHED'}
+
 class MainPanel(bpy.types.Panel):
     bl_label = "AIFA PRE TOOL"
     bl_idname = "VIEW_PT_MainPanel"
@@ -752,6 +770,8 @@ class PanelC(bpy.types.Panel):
         row.operator("wm.export_obj_animation", icon= 'CUBE', text= "export animation objs")
         row = layout.row()
         row.operator("wm.export_shapekeys", icon= 'CUBE', text= "export active object shapekeys")
+        row = layout.row()
+        row.operator("wm.modify_shapekey_range", icon= 'CUBE', text= "modify shapekey range [-5, 5]")
 class AifaImportAnimationSettings(bpy.types.PropertyGroup):
     weightListPath: bpy.props.StringProperty(
         name="weightListPath",
@@ -849,6 +869,7 @@ def register():
     bpy.utils.register_class(WM_OT_ImportKeyPointsAnimation)
     bpy.utils.register_class(WM_OT_Export_Anition_Objs)
     bpy.utils.register_class(WM_OT_Export_Shapekeys)
+    bpy.utils.register_class(WM_OT_Modify_Shapekey_Range)
     
     #Here we are UnRegistering the Classes    
 def unregister():
@@ -879,7 +900,7 @@ def unregister():
     bpy.utils.unregister_class(WM_OT_ImportKeyPointsAnimation)
     bpy.utils.unregister_class(WM_OT_Export_Anition_Objs)
     bpy.utils.unregister_class(WM_OT_Export_Shapekeys)
-   
+    bpy.utils.unregister_class(WM_OT_Modify_Shapekey_Range)
     #This is required in order for the script to run in the text editor    
 if __name__ == "__main__":
     
